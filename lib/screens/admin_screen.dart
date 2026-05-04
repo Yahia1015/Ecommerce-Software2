@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'add_product_screen.dart'; // سطر الاستدعاء الجديد
+import 'package:firebase_auth/firebase_auth.dart'; // مكتبة الحسابات عشان الخروج
+import 'add_product_screen.dart';
+import 'login_screen.dart'; // عشان نقدر نرجع لشاشة الدخول
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -9,6 +11,23 @@ class AdminScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          // زرار تسجيل الخروج الجديد
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              // بنعمل تسجيل خروج من السيرفر الأول
+              await FirebaseAuth.instance.signOut();
+              // بنقفل شاشة المدير ونفتح شاشة الدخول
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: Center(
         child: Padding(
@@ -24,7 +43,7 @@ class AdminScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               
-              // زرار إضافة منتج (تم تعديله عشان يفتح الشاشة)
+              // زرار إضافة منتج
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -34,7 +53,6 @@ class AdminScreen extends StatelessWidget {
                     foregroundColor: const Color(0xFF000080),
                   ),
                   onPressed: () {
-                    // الكود ده هو اللي بينقل للشاشة الجديدة
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const AddProductScreen()),
@@ -46,7 +64,7 @@ class AdminScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // زرار إدارة المنتجات الحالية (هنسيبه زي ما هو دلوقتي)
+              // زرار إدارة المنتجات الحالية
               SizedBox(
                 width: double.infinity,
                 height: 50,
