@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart'; // استدعاء شاشة تسجيل الدخول الجديدة
+import 'package:firebase_core/firebase_core.dart'; // استدعاء مكتبة فايربيز الأساسية
+import 'firebase_options.dart'; // استدعاء ملف الربط اللي لسه نازل
+import 'screens/login_screen.dart';
 
-void main() {
+// خلينا الـ main تكون Future وتحتوي على async عشان تستنى فايربيز يحمل
+void main() async { 
+  WidgetsFlutterBinding.ensureInitialized(); // سطر تأكيد تشغيل فلاتر قبل فايربيز
+  
+  // سطر تشغيل فايربيز باستخدام إعدادات مشروعنا
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
   runApp(const EcommerceApp());
 }
 
@@ -22,7 +32,7 @@ class EcommerceApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color(0xFFF8F8FF),
       ),
-      home: const LoginScreen(), // خلينا شاشة البداية هي تسجيل الدخول
+      home: const LoginScreen(), 
     );
   }
 }
