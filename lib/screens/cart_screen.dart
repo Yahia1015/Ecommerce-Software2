@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // مكتبة قاعدة البيانات
+import 'package:firebase_auth/firebase_auth.dart'; // مكتبة الحسابات لمعرفة مين اللي بيطلب
 
-// دي القائمة (List) اللي هنخزن فيها المنتجات اللي العميل بيختارها
 List<Map<String, dynamic>> myCart = [];
 
 class CartScreen extends StatefulWidget {
@@ -11,7 +12,8 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  // دالة صغيرة بتحسب إجمالي السعر
+  bool isCheckingOut = false; // عشان نعمل علامة تحميل وقت الدفع
+
   double get totalPrice {
     return myCart.fold(0, (sum, item) => sum + (item['price'] as double));
   }
@@ -48,7 +50,6 @@ class _CartScreenState extends State<CartScreen> {
                           trailing: IconButton(
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () {
-                              // كود مسح المنتج من السلة
                               setState(() {
                                 myCart.removeAt(index);
                               });
@@ -59,7 +60,6 @@ class _CartScreenState extends State<CartScreen> {
                     },
                   ),
                 ),
-                // شريط الحساب الإجمالي تحت
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: const BoxDecoration(
@@ -73,23 +73,47 @@ class _CartScreenState extends State<CartScreen> {
                         'Total: \$${totalPrice.toStringAsFixed(2)}',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF000080)),
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFDAA520),
-                          foregroundColor: const Color(0xFF000080),
-                        ),
-                        onPressed: () {
-                          if (myCart.isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Order Placed Successfully!'), backgroundColor: Colors.green),
-                            );
-                            setState(() {
-                              myCart.clear(); // تفريغ السلة بعد الطلب
-                            });
-                          }
-                        },
-                        child: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                      isCheckingOut 
+                        ? const CircularProgressIndicator() 
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDAA520),
+                              foregroundColor: const Color(0xFF000080),
+                            ),
+                            onPressed: () async {
+                              if (myCart.isNotEmpty) {
+                                setState(() { isCheckingOut = true; });
+
+                                try {
+                                  // بنجيب بيانات العميل اللي مسجل دخول دلوقتي
+                                  final currentUser = FirebaseAuth.instance.currentUser;
+                                  
+                                  // بنبعت الطلب لجدول جديد اسمه orders في فايربيز
+                                  await FirebaseFirestore.instance.collection('orders').add({
+                                    'userEmail': currentUser?.email ?? 'Guest',
+                                    'items': myCart,
+                                    'totalAmount': totalPrice,
+                                    'orderDate': FieldValue.serverTimestamp(),
+                                  });
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Order Placed Successfully!'), backgroundColor: Colors.green),
+                                  );
+                                  
+                                  setState(() {
+                                    myCart.clear(); // تفريغ السلة بعد نجاح الطلب
+                                  });
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                  );
+                                }
+
+                                setState(() { isCheckingOut = false; });
+                              }
+                            },
+                            child: const Text('Checkout', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
                     ],
                   ),
                 )
