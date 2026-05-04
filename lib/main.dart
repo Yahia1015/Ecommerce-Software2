@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/products_screen.dart'; // سطر الربط بشاشة المنتجات اللي جوه فولدر screens
+import 'screens/login_screen.dart'; // استدعاء شاشة تسجيل الدخول الجديدة
 
 void main() {
   runApp(const EcommerceApp());
@@ -22,7 +22,7 @@ class EcommerceApp extends StatelessWidget {
         ),
         scaffoldBackgroundColor: const Color(0xFFF8F8FF),
       ),
-      home: BrowseProductsScreen(), 
+      home: const LoginScreen(), // خلينا شاشة البداية هي تسجيل الدخول
     );
   }
 }
