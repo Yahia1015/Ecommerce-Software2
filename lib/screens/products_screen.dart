@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'cart_screen.dart'; // سطر الربط بشاشة السلة
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:firebase_auth/firebase_auth.dart'; 
+import 'login_screen.dart';
+import 'cart_screen.dart'; // سطر الاستدعاء اللي بيخلينا نشوف السلة
 
 class BrowseProductsScreen extends StatefulWidget {
   const BrowseProductsScreen({super.key});
@@ -9,54 +12,135 @@ class BrowseProductsScreen extends StatefulWidget {
 }
 
 class _BrowseProductsScreenState extends State<BrowseProductsScreen> {
-  final List<Map<String, dynamic>> products = [
-    {"name": "Luxury Watch", "price": 250.0, "stock": 10},
-    {"name": "Leather Bag", "price": 120.0, "stock": 5},
-    {"name": "Premium Perfume", "price": 85.0, "stock": 20},
-    {"name": "Smart Glasses", "price": 150.0, "stock": 8},
-  ];
-
-  List<Map<String, dynamic>> cartItems = [];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Browse Products', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Our Products', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.shopping_cart),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CartScreen(cartItems: cartItems)),
+                MaterialPageRoute(builder: (context) => const CartScreen()),
               );
             },
-          )
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut(); 
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+          ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            elevation: 3,
-            child: ListTile(
-              leading: const Icon(Icons.shopping_bag, color: Color(0xFF000080), size: 30),
-              title: Text(product['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-              subtitle: Text('Price: \$${product['price']}  |  In Stock: ${product['stock']}'),
-              trailing: IconButton(
-                icon: const Icon(Icons.add_shopping_cart, color: Color(0xFFDAA520), size: 28),
-                onPressed: () {
-                  setState(() {
-                    cartItems.add(product);
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('${product['name']} added to cart!')),
-                  );
-                },
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('products').orderBy('createdAt', descending: true).snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error loading products!'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No products available yet.',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
+            );
+          }
+
+          final products = snapshot.data!.docs;
+
+          return Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, 
+                childAspectRatio: 0.7, 
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: products.length, 
+              itemBuilder: (context, index) {
+                var productData = products[index].data() as Map<String, dynamic>;
+                String name = productData['name'] ?? 'Unknown Product';
+                double price = (productData['price'] ?? 0.0).toDouble();
+                String imageUrl = productData['imageUrl'] ?? 'https://via.placeholder.com/150';
+
+                return Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, size: 50),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              '\$${price.toStringAsFixed(2)}',
+                              style: const TextStyle(color: Color(0xFFDAA520), fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(height: 5),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF000080),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                onPressed: () {
+                                  // التعديل الجديد اللي بيرمي المنتج في السلة
+                                  myCart.add({
+                                    'name': name,
+                                    'price': price,
+                                    'imageUrl': imageUrl
+                                  });
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('$name added to cart!'), duration: const Duration(seconds: 1)),
+                                  );
+                                },
+                                child: const Text('Add to Cart'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           );
         },
